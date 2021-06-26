@@ -1,6 +1,13 @@
 const fs = require("fs");
 const cheerio = require("cheerio");
 const request = require("request");
+const path = require("path");
+const xlsx = require("xlsx");
+const directory = path.join(__dirname, "ipl");
+createdir(directory);
+const { O_DIRECTORY } = require("constants");
+const { doesNotReject } = require("assert");
+
 
 
 let url = "https://www.espncricinfo.com/series/ipl-2020-21-1210595";
@@ -100,11 +107,62 @@ function resultextracter(data) {
                 let fours = $(checker[5]).text();
                 let sixes = $(checker[6]).text();
                 let sr = $(checker[7]).text();
-                console.log(name + "played from " + team + " against " + opponent + " on " + date + " at " + venue + " where he scored " + runs + " runs " + " on " + balls + " balls with " + fours + " 4s " + sixes + " 6s " + "and strike rate of " + sr);
+                processPlayer(team, name, opponent, venue, date, runs, balls, fours, sixes, sr);
+                console.log(team, name, opponent, venue, date, runs, balls, fours, sixes, sr);
             }
         }
     }
 
 
+
+}
+
+function createdir(filepath) {
+    if (fs.existsSync(filepath) == false) {
+        fs.mkdirSync(filepath);
+    }
+}
+
+function processPlayer(team, name, opponent, venue, date, runs, balls, fours, sixes, sr) {
+    let teampath = path.join(directory, team);
+    createdir(teampath);
+
+    let filepath = path.join(teampath, name + ".xls");
+
+    let data = excelReader(filepath, name);
+
+    let content = {
+        team,
+        name,
+        opponent,
+        venue,
+        date,
+        runs,
+        balls,
+        fours,
+        sixes,
+        sr
+    }
+    data.push(content);
+
+    excelWriter(filepath, data, name);
+}
+
+function excelReader(sheetpath, sheetname) {
+    if (fs.existsSync(sheetpath) == false) {
+        return [];
+    }
+    let workbook = xlsx.readFile(sheetpath);
+    let data = workbook.Sheets[sheetname];
+    let json_data = xlsx.utils.sheet_to_json(data);
+
+    return json_data;
+}
+
+function excelWriter(sheetpath, json_data, sheetname) {
+    let new_work_book = xlsx.utils.book_new();
+    let data = xlsx.utils.json_to_sheet(json_data);
+    xlsx.utils.book_append_sheet(new_work_book, data, sheetname);
+    xlsx.writeFile(new_work_book, sheetpath);
 
 }
